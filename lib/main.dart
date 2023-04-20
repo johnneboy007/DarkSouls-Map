@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:latlong2/latlong.dart';
 import 'Components/Layout/appbar.dart';
+import 'Components/Map/map.dart';
 import 'variables/index.dart';
 
 void main() {
@@ -10,12 +13,6 @@ void main() {
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
-  void initState() {
-    // TODO: implement initState
-    SystemChrome.setEnabledSystemUIMode(SystemUiMode.manual, overlays: [SystemUiOverlay.bottom]);
-    // super.initState();
-  }
-
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
@@ -23,54 +20,77 @@ class MyApp extends StatelessWidget {
       title: 'Flutter Demo',
       theme:
           ThemeData(primarySwatch: eldenColors, fontFamily: 'Dark Souls Bold'),
-      home: const MyHomePage(title: 'Does the Black Moon howl?'),
+      home: const MyHomePage(),
     );
   }
 }
 
 class MyHomePage extends StatefulWidget {
-  const MyHomePage({super.key, required this.title});
-
-  final String title;
+  const MyHomePage({super.key});
 
   @override
   State<MyHomePage> createState() => _MyHomePageState();
 }
 
 class _MyHomePageState extends State<MyHomePage> {
-  int _counter = 0;
+  String _title = '';
 
-  void _incrementCounter() {
+  Position? currentLocation;
+
+  _setTitle(String str) => setState(() {
+        _title = str;
+      });
+
+  void _getUserLocation() async {
+    bool serviceEnabled;
+    LocationPermission permission;
+    serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!serviceEnabled) {
+      return;
+    }
+
+    permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+      if (permission == LocationPermission.denied) {
+        Position? lastKnown = await Geolocator.getLastKnownPosition();
+        if (lastKnown != null) {
+          setState(() {
+            currentLocation = lastKnown;
+          });
+        }
+        return;
+      }
+    }
+    if (permission == LocationPermission.deniedForever) {
+      return;
+    }
+
+    Position position = await Geolocator.getCurrentPosition();
+
     setState(() {
-      _counter++;
+      currentLocation = position;
     });
+  }
+
+  @override
+  void initState() {
+    SystemChrome.setEnabledSystemUIMode(SystemUiMode.manual,
+        overlays: [SystemUiOverlay.top]);
+    _getUserLocation();
+    super.initState();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: <Widget>[
-            const Text(
-              'You have pushed the button this many times:',
-              style: TextStyle(
-                fontSize: 22,
-              ),
-              textAlign: TextAlign.center,
-            ),
-            Text(
-              '$_counter',
-              style: Theme.of(context).textTheme.headlineMedium,
-            ),
-          ],
-        ),
+      appBar: NewAppbar(
+        title: Text(_title),
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _incrementCounter,
-        tooltip: 'Increment',
-        child: const Icon(Icons.add),
+      body: MapSample(
+        setter: _setTitle,
+        currentLocation:
+            currentLocation != null ? LatLng(currentLocation?.latitude as double, currentLocation?.longitude as double) : null,
       ),
     );
   }

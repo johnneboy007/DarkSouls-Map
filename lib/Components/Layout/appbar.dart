@@ -7,12 +7,12 @@ class NewAppbar extends StatelessWidget with PreferredSizeWidget {
     required this.title,
   });
 
-  final String title;
+  final Widget? title;
 
   @override
   Widget build(BuildContext context) {
     return AppBar(
-      title: Text(title),
+      title: title,
       backgroundColor: eldenColors.shade500,
     );
   }
